@@ -1,5 +1,6 @@
 package training.busboard;
 
+import apple.laf.JRSUIConstants;
 import org.glassfish.jersey.jackson.JacksonFeature;
 
 import javax.net.ssl.SSLContext;
@@ -7,9 +8,13 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.core.GenericType;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Scanner;
 
 public class Main {
 
@@ -23,16 +28,37 @@ public class Main {
         SSLContext sslcontext = SSLContext.getInstance("TLS");
 
         sslcontext.init(null, new TrustManager[]{new X509TrustManager() {
-            public void checkClientTrusted(X509Certificate[] arg0, String arg1) {}
-            public void checkServerTrusted(X509Certificate[] arg0, String arg1) {}
-            public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+            public void checkClientTrusted(X509Certificate[] arg0, String arg1) {
+            }
+
+            public void checkServerTrusted(X509Certificate[] arg0, String arg1) {
+            }
+
+            public X509Certificate[] getAcceptedIssuers() {
+                return new X509Certificate[0];
+            }
         }}, new java.security.SecureRandom());
 
-        Client client = ClientBuilder.newBuilder().register(JacksonFeature.class).sslContext(sslcontext).hostnameVerifier((s1, s2) -> true).build();
-        String response = client.target("https://api.tfl.gov.uk/StopPoint/490008660N/Arrivals")
-                .request("text/json")
-                .get(String.class);
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Please enter the bus stop ID");
+        String busStopID = scanner.nextLine();
 
-        System.out.println(response);
+
+        Client client = ClientBuilder.newBuilder().register(JacksonFeature.class).sslContext(sslcontext).hostnameVerifier((s1, s2) -> true).build();
+
+
+        List<Arrivals> response = client.target("https://api.tfl.gov.uk/StopPoint/" + busStopID + "/Arrivals")
+                .request("text/json")
+                .get(new GenericType<List<Arrivals>>() {
+                });
+
+        System.out.println(response.get(0).stationName);
+
+        for (int i = 0; i < 5; i++) {
+
+            System.out.println(response.get(i).lineId + " to " + response.get(i).destinationName + " expected at " + response.get(i).expectedArrival);
+        }
     }
 }
+
+//test bus ID 490008660N
