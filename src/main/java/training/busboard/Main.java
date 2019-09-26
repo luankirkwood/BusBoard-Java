@@ -53,10 +53,12 @@ public class Main {
                 });
 
         System.out.println(response.get(0).stationName);
+        System.out.println("");
 
         for (int i = 0; i < 5; i++) {
 
-            System.out.println(response.get(i).lineId + " to " + response.get(i).destinationName + " expected at " + response.get(i).expectedArrival);
+            System.out.println(response.get(i).lineId + " to " + response.get(i).destinationName + " expected in " + response.get(i).timeToStation / 60 + " minutes.");
+            System.out.println("");
         }
     }
 }
