@@ -11,7 +11,6 @@ import javax.ws.rs.core.GenericType;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 
@@ -24,9 +23,9 @@ public class Main {
         System.setProperty("https.proxyHost", "localhost");
         System.setProperty("https.proxyPort", "9090");
 
-        SSLContext sslcontext = SSLContext.getInstance("TLS");
+        SSLContext sslContext = SSLContext.getInstance("TLS");
 
-        sslcontext.init(null, new TrustManager[]{new X509TrustManager() {
+        sslContext.init(null, new TrustManager[]{new X509TrustManager() {
             public void checkClientTrusted(X509Certificate[] arg0, String arg1) {
             }
 
@@ -38,55 +37,59 @@ public class Main {
             }
         }}, new java.security.SecureRandom());
 
-        clientBuilder(sslcontext);
-
-    }
-
-    public static void clientBuilder(SSLContext sslContext) {
-
         Client client = ClientBuilder.newBuilder().register(JacksonFeature.class).sslContext(sslContext).hostnameVerifier((s1, s2) -> true).build();
 
         Scanner scanner = new Scanner(System.in);
         System.out.println("Please enter your Postcode: ");
-        String postCode = scanner.nextLine();
+        String postcode = scanner.nextLine();
 
-        getPostcodes(client, postCode);
+        PostcodeWrapper Postcodes = getPostcodes(client, postcode);
+        StopPointsWrapper stopPoints = getStopPoints(client, Postcodes);
 
-    }
+        for (int i = 0; i < stopPoints.stopPoints.size(); i++) {
+            List<Arrivals> arrivalsList = getStops(client, i, stopPoints);
+            printBusTimes(arrivalsList);
+        }
 
-    public static void getPostcodes(Client client, String postCode) {
+
+        }
+
+
+    private static PostcodeWrapper getPostcodes(Client client, String postCode) {
         PostcodeWrapper postcodes = client.target("https://api.postcodes.io/postcodes/" + postCode)
                 .request("text/json")
                 .get(PostcodeWrapper.class);
 
-        getStopPoints(client, postcodes);
+        return postcodes;
     }
 
-    public static void getStopPoints(Client client, PostcodeWrapper postcodes) {
+
+    public static StopPointsWrapper getStopPoints(Client client, PostcodeWrapper postcodes) {
         StopPointsWrapper stopPoints = client.target("https://api.tfl.gov.uk/StopPoint?stopTypes=NaptanPublicBusCoachTram&lat=" + postcodes.result.latitude + "&lon=" + postcodes.result.longitude)
                 .request("text/json")
                 .get(StopPointsWrapper.class);
 
-        getStops(client, stopPoints);
+        return stopPoints;
     }
 
-    public static void getStops(Client client, StopPointsWrapper stopPoints) {
-        for (int i = 0; i < stopPoints.stopPoints.size(); i++) {
-            List<Arrivals> arrivalsList = client.target("https://api.tfl.gov.uk/StopPoint/" + stopPoints.stopPoints.get(i).naptanId + "/Arrivals")
-                    .request("text/json")
-                    .get(new GenericType<List<Arrivals>>() {
-                    });
+    public static List<Arrivals> getStops(Client client,int i, StopPointsWrapper stopPoints) {
+        List<Arrivals> arrivalsList = client.target("https://api.tfl.gov.uk/StopPoint/" + stopPoints.stopPoints.get(i).naptanId + "/Arrivals")
+                .request("text/json")
+                .get(new GenericType<List<Arrivals>>() {
+                });
 
-            System.out.println(arrivalsList.get(0).stationName);
+        return arrivalsList;
 
+    }
 
-            for (int j = 0; j < (Math.min(arrivalsList.get(j).timeToStation, 4)); j++) {
+    public static void printBusTimes(List<Arrivals> arrivalsList) {
+        System.out.println("");
+        System.out.println(arrivalsList.get(0).stationName);
 
-                System.out.println(arrivalsList.get(j).lineId + " to " + arrivalsList.get(j).destinationName + " expected in " + arrivalsList.get(j).timeToStation / 60 + " minutes.");
-                System.out.println("");
-            }
+        for (int j = 0; j < (Math.min(arrivalsList.get(j).timeToStation, 5)); j++) {
 
+            System.out.println(arrivalsList.get(j).lineId + " to " + arrivalsList.get(j).destinationName + " expected in " + arrivalsList.get(j).timeToStation / 60 + " minutes.");
+            System.out.println("");
         }
     }
-
 }
