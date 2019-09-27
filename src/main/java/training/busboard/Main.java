@@ -38,24 +38,44 @@ public class Main {
             }
         }}, new java.security.SecureRandom());
 
+        clientBuilder(sslcontext);
+
+    }
+
+    public static void clientBuilder(SSLContext sslContext) {
+
+        Client client = ClientBuilder.newBuilder().register(JacksonFeature.class).sslContext(sslContext).hostnameVerifier((s1, s2) -> true).build();
+
         Scanner scanner = new Scanner(System.in);
         System.out.println("Please enter your Postcode: ");
         String postCode = scanner.nextLine();
 
-        Client client = ClientBuilder.newBuilder().register(JacksonFeature.class).sslContext(sslcontext).hostnameVerifier((s1, s2) -> true).build();
+        getPostcodes(client, postCode);
 
+    }
+
+    public static void getPostcodes(Client client, String postCode) {
         PostcodeWrapper postcodes = client.target("https://api.postcodes.io/postcodes/" + postCode)
                 .request("text/json")
                 .get(PostcodeWrapper.class);
 
+        getStopPoints(client, postcodes);
+    }
+
+    public static void getStopPoints(Client client, PostcodeWrapper postcodes) {
         StopPointsWrapper stopPoints = client.target("https://api.tfl.gov.uk/StopPoint?stopTypes=NaptanPublicBusCoachTram&lat=" + postcodes.result.latitude + "&lon=" + postcodes.result.longitude)
                 .request("text/json")
                 .get(StopPointsWrapper.class);
 
+        getStops(client, stopPoints);
+    }
+
+    public static void getStops(Client client, StopPointsWrapper stopPoints) {
         for (int i = 0; i < stopPoints.stopPoints.size(); i++) {
             List<Arrivals> arrivalsList = client.target("https://api.tfl.gov.uk/StopPoint/" + stopPoints.stopPoints.get(i).naptanId + "/Arrivals")
                     .request("text/json")
-                    .get(new GenericType<List<Arrivals>>() {});
+                    .get(new GenericType<List<Arrivals>>() {
+                    });
 
             System.out.println(arrivalsList.get(0).stationName);
 
@@ -68,4 +88,5 @@ public class Main {
 
         }
     }
+
 }
