@@ -1,6 +1,5 @@
 package training.busboard;
 
-import apple.laf.JRSUIConstants;
 import org.glassfish.jersey.jackson.JacksonFeature;
 
 import javax.net.ssl.SSLContext;
@@ -40,27 +39,33 @@ public class Main {
         }}, new java.security.SecureRandom());
 
         Scanner scanner = new Scanner(System.in);
-        System.out.println("Please enter the bus stop ID");
-        String busStopID = scanner.nextLine();
-
+        System.out.println("Please enter your Postcode: ");
+        String postCode = scanner.nextLine();
 
         Client client = ClientBuilder.newBuilder().register(JacksonFeature.class).sslContext(sslcontext).hostnameVerifier((s1, s2) -> true).build();
 
-
-        List<Arrivals> response = client.target("https://api.tfl.gov.uk/StopPoint/" + busStopID + "/Arrivals")
+        PostcodeWrapper postcodes = client.target("https://api.postcodes.io/postcodes/" + postCode)
                 .request("text/json")
-                .get(new GenericType<List<Arrivals>>() {
-                });
+                .get(PostcodeWrapper.class);
 
-        System.out.println(response.get(0).stationName);
-        System.out.println("");
+        StopPointsWrapper stopPoints = client.target("https://api.tfl.gov.uk/StopPoint?stopTypes=NaptanPublicBusCoachTram&lat=" + postcodes.result.latitude + "&lon=" + postcodes.result.longitude)
+                .request("text/json")
+                .get(StopPointsWrapper.class);
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < stopPoints.stopPoints.size(); i++) {
+            List<Arrivals> arrivalsList = client.target("https://api.tfl.gov.uk/StopPoint/" + stopPoints.stopPoints.get(i).naptanId + "/Arrivals")
+                    .request("text/json")
+                    .get(new GenericType<List<Arrivals>>() {});
 
-            System.out.println(response.get(i).lineId + " to " + response.get(i).destinationName + " expected in " + response.get(i).timeToStation / 60 + " minutes.");
-            System.out.println("");
+            System.out.println(arrivalsList.get(0).stationName);
+
+
+            for (int j = 0; j < (Math.min(arrivalsList.get(j).timeToStation, 4)); j++) {
+
+                System.out.println(arrivalsList.get(j).lineId + " to " + arrivalsList.get(j).destinationName + " expected in " + arrivalsList.get(j).timeToStation / 60 + " minutes.");
+                System.out.println("");
+            }
+
         }
     }
 }
-
-//test bus ID 490008660N
