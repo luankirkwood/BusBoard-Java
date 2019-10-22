@@ -13,6 +13,13 @@
             <h2>Bus Information</h2>
             <div>
                 <p>You entered postcode <span th:text="${busInfo.postcode}"></span></p>
+
+                <ul th:each="arrivals : ${busInfo.arrivals}">
+                    <p>The current Bus Stop is <span th:text="${arrivals.stationName}"></span></p>
+                    <p>The bus <span th:text="${arrivals.lineId}"></span> to <span th:text="${arrivals.destinationName}"></span> is due in <span th:text="${arrivals.timeToStation}"></span> minutes.
+                    </p>
+                </ul>
+
             </div>
         </div>
     </body>

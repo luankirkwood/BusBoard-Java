@@ -18,6 +18,66 @@ public class Main {
 
     public static void main(String args[]) throws KeyManagementException, NoSuchAlgorithmException {
 
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Please enter your Postcode: ");
+        String postcode = scanner.nextLine();
+
+        PostcodeWrapper Postcodes = getPostcodes(postcode);
+        StopPointsWrapper stopPoints = getStopPoints(Postcodes);
+
+        for (int i = 0; i < stopPoints.stopPoints.size(); i++) {
+            List<Arrivals> arrivalsList = getStops(i, stopPoints);
+            printBusTimes(arrivalsList);
+        }
+    }
+
+    private static PostcodeWrapper getPostcodes(String postCode) throws NoSuchAlgorithmException, KeyManagementException {
+
+        Client client = getClient();
+
+        PostcodeWrapper postcodes = client.target("https://api.postcodes.io/postcodes/" + postCode)
+                .request("text/json")
+                .get(PostcodeWrapper.class);
+
+        return postcodes;
+    }
+
+
+    public static StopPointsWrapper getStopPoints(PostcodeWrapper postcodes) throws NoSuchAlgorithmException, KeyManagementException {
+
+        Client client = getClient();
+
+        StopPointsWrapper stopPoints = client.target("https://api.tfl.gov.uk/StopPoint?stopTypes=NaptanPublicBusCoachTram&lat=" + postcodes.result.latitude + "&lon=" + postcodes.result.longitude)
+                .request("text/json")
+                .get(StopPointsWrapper.class);
+
+        return stopPoints;
+    }
+
+    public static List<Arrivals> getStops(int i, StopPointsWrapper stopPoints) throws NoSuchAlgorithmException, KeyManagementException {
+
+        Client client = getClient();
+
+        List<Arrivals> arrivalsList = client.target("https://api.tfl.gov.uk/StopPoint/" + stopPoints.stopPoints.get(i).naptanId + "/Arrivals")
+                .request("text/json")
+                .get(new GenericType<List<Arrivals>>() {
+                });
+
+        return arrivalsList;
+    }
+
+    public static void printBusTimes(List<Arrivals> arrivalsList) {
+        System.out.println("");
+        System.out.println(arrivalsList.get(0).stationName);
+
+        for (int j = 0; j < (Math.min(arrivalsList.size(), 5)); j++) {
+
+            System.out.println(arrivalsList.get(j).lineId + " to " + arrivalsList.get(j).destinationName + " expected in " + arrivalsList.get(j).timeToStation / 60 + " minutes.");
+            System.out.println("");
+        }
+    }
+
+    private static Client getClient() throws KeyManagementException, NoSuchAlgorithmException {
         System.setProperty("http.proxyHost", "localhost");
         System.setProperty("http.proxyPort", "9090");
         System.setProperty("https.proxyHost", "localhost");
@@ -39,57 +99,6 @@ public class Main {
 
         Client client = ClientBuilder.newBuilder().register(JacksonFeature.class).sslContext(sslContext).hostnameVerifier((s1, s2) -> true).build();
 
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Please enter your Postcode: ");
-        String postcode = scanner.nextLine();
-
-        PostcodeWrapper Postcodes = getPostcodes(client, postcode);
-        StopPointsWrapper stopPoints = getStopPoints(client, Postcodes);
-
-        for (int i = 0; i < stopPoints.stopPoints.size(); i++) {
-            List<Arrivals> arrivalsList = getStops(client, i, stopPoints);
-            printBusTimes(arrivalsList);
-        }
-
-
-        }
-
-
-    private static PostcodeWrapper getPostcodes(Client client, String postCode) {
-        PostcodeWrapper postcodes = client.target("https://api.postcodes.io/postcodes/" + postCode)
-                .request("text/json")
-                .get(PostcodeWrapper.class);
-
-        return postcodes;
-    }
-
-
-    public static StopPointsWrapper getStopPoints(Client client, PostcodeWrapper postcodes) {
-        StopPointsWrapper stopPoints = client.target("https://api.tfl.gov.uk/StopPoint?stopTypes=NaptanPublicBusCoachTram&lat=" + postcodes.result.latitude + "&lon=" + postcodes.result.longitude)
-                .request("text/json")
-                .get(StopPointsWrapper.class);
-
-        return stopPoints;
-    }
-
-    public static List<Arrivals> getStops(Client client,int i, StopPointsWrapper stopPoints) {
-        List<Arrivals> arrivalsList = client.target("https://api.tfl.gov.uk/StopPoint/" + stopPoints.stopPoints.get(i).naptanId + "/Arrivals")
-                .request("text/json")
-                .get(new GenericType<List<Arrivals>>() {
-                });
-
-        return arrivalsList;
-
-    }
-
-    public static void printBusTimes(List<Arrivals> arrivalsList) {
-        System.out.println("");
-        System.out.println(arrivalsList.get(0).stationName);
-
-        for (int j = 0; j < (Math.min(arrivalsList.get(j).timeToStation, 5)); j++) {
-
-            System.out.println(arrivalsList.get(j).lineId + " to " + arrivalsList.get(j).destinationName + " expected in " + arrivalsList.get(j).timeToStation / 60 + " minutes.");
-            System.out.println("");
-        }
+        return client;
     }
 }

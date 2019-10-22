@@ -12,4 +12,12 @@ public class Arrivals {
     public String lineId;
     public String destinationName;
     public int timeToStation;
+
+    public Arrivals(String name, String bus, String destination, Integer time) {
+
+        stationName = name;
+        lineId = bus;
+        destinationName = destination;
+        timeToStation = time;
+    }
 }
